@@ -1,7 +1,3 @@
-/**
- * ItemCard Component
- * Display item preview in grid/list views
- */
 
 import { Link } from 'react-router-dom';
 import Countdown from './Countdown';

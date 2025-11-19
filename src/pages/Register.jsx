@@ -1,7 +1,3 @@
-/**
- * Register Page
- * User registration form with validation
- */
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';

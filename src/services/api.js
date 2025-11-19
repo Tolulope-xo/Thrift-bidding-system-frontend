@@ -1,7 +1,3 @@
-/**
- * API Configuration
- * Axios instance with interceptors for authentication
- */
 
 import axios from 'axios';
 import useAuthStore from '../store/authStore';

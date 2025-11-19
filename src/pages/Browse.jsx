@@ -1,7 +1,3 @@
-/**
- * Browse Page
- * Browse all items with filters, search, and pagination
- */
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';

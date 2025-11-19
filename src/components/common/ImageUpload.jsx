@@ -1,7 +1,3 @@
-/**
- * ImageUpload Component
- * Multi-image upload with preview and validation
- */
 
 import { useState } from 'react';
 

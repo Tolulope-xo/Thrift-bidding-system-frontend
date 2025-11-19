@@ -1,7 +1,3 @@
-/**
- * Authentication Service
- * API calls for user authentication
- */
 
 import api from './api';
 import useAuthStore from '../store/authStore';

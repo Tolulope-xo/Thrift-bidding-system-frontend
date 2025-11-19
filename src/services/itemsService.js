@@ -1,7 +1,3 @@
-/**
- * Items Service
- * API calls for item operations
- */
 
 import api from './api';
 

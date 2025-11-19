@@ -1,7 +1,3 @@
-/**
- * BidHistory Component
- * Displays the history of bids on an item
- */
 
 import { formatDistanceToNow } from 'date-fns';
 import PropTypes from 'prop-types';

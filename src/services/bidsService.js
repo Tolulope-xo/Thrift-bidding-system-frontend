@@ -1,7 +1,3 @@
-/**
- * Bids Service
- * API calls for bidding operations
- */
 
 import api from './api';
 

@@ -1,7 +1,4 @@
-/**
- * Socket.IO Service
- * Manages real-time WebSocket connections for bidding
- */
+
 
 import { io } from 'socket.io-client';
 
@@ -11,9 +8,6 @@ class SocketService {
     this.connected = false;
   }
 
-  /**
-   * Connect to Socket.IO server
-   */
   connect() {
     if (this.socket?.connected) {
       console.log('Socket already connected');

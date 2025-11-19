@@ -1,7 +1,3 @@
-/**
- * ItemDetail Page
- * Single item view with full details and real-time bidding
- */
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';

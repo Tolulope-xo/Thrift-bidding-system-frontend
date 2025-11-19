@@ -1,7 +1,3 @@
-/**
- * Countdown Component
- * Real-time countdown timer for auction end time with color-coded urgency
- */
 
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, isPast, differenceInSeconds } from 'date-fns';

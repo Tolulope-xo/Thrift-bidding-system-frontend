@@ -1,7 +1,3 @@
-/**
- * Protected Route Component
- * Redirects unauthenticated users to login page
- */
 
 import { Navigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';

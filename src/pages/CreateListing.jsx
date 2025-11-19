@@ -1,7 +1,3 @@
-/**
- * CreateListing Page
- * Form to create a new item listing
- */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

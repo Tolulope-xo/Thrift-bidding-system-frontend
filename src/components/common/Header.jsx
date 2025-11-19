@@ -1,7 +1,3 @@
-/**
- * Header Component
- * Navigation header for the application
- */
 
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';

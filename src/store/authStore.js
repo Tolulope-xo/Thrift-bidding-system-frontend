@@ -1,7 +1,3 @@
-/**
- * Authentication Store (Zustand)
- * Global state management for user authentication
- */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';

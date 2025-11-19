@@ -1,7 +1,3 @@
-/**
- * Profile Page
- * Display and edit user profile information
- */
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
