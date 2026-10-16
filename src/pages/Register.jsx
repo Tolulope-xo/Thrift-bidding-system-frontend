@@ -161,7 +161,9 @@ const Register = () => {
       }, 1500);
     } catch (error) {
       console.error('Registration error:', error);
-      if (error.errors && Array.isArray(error.errors)) {
+      // The backend always sends `errors` (often empty), so only treat it as
+      // field errors when there are some — otherwise 409/500 messages vanish.
+      if (Array.isArray(error.errors) && error.errors.length > 0) {
         const fieldErrors = {};
         error.errors.forEach((err) => {
           fieldErrors[err.field] = err.message;
