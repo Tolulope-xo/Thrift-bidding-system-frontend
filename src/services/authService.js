@@ -111,6 +111,62 @@ const authService = {
       throw error.response?.data || error;
     }
   },
+
+  /**
+   * Request a password reset email.
+   * Backend always responds 200 regardless of whether the email is
+   * registered, so the caller cannot use this to enumerate users.
+   */
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Complete a password reset with a token.
+   */
+  resetPassword: async ({ token, newPassword }) => {
+    try {
+      const response = await api.post('/auth/reset-password', { token, newPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Confirm an email address via verification token from the inbox.
+   * On success, mirror the updated email_verified_at into the local
+   * user object so the verification banner disappears immediately.
+   */
+  verifyEmail: async (token) => {
+    try {
+      const response = await api.post('/auth/verify-email', { token });
+      const verifiedAt = response.data?.data?.email_verified_at;
+      if (verifiedAt) {
+        useAuthStore.getState().updateUser({ email_verified_at: verifiedAt });
+      }
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Resend the email verification link to the logged-in user.
+   */
+  resendVerification: async () => {
+    try {
+      const response = await api.post('/auth/resend-verification');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
 };
 
 export default authService;

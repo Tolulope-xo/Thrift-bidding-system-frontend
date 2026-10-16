@@ -1,9 +1,59 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowUpRight, Eye, Gavel, PackageOpen, Pencil, Plus, RotateCw, Store, Tag, Trash2 } from 'lucide-react';
 import itemsService from '../services/itemsService';
 import Countdown from '../components/common/Countdown';
 import { format } from 'date-fns';
+import { Alert, Badge, Button, Card, EmptyState, Page, PageHeader, Skeleton, Stat, Tabs } from '../components/ui';
+import { EASE, formatMoney } from '../lib/motion';
+
+const FALLBACK_IMG =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ece6da"/><path d="M38 44h24M50 44v20" stroke="#a89f92" stroke-width="5" stroke-linecap="round"/></svg>`
+  );
+
+const STATUS_TABS = [
+  { value: '', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'expired', label: 'Expired' },
+];
+
+const StatusBadge = ({ status }) => {
+  if (status === 'active')
+    return (
+      <Badge tone="flare">
+        <span className="size-1.5 rounded-full bg-flare animate-pulse-dot" />
+        Live
+      </Badge>
+    );
+  if (status === 'sold') return <Badge tone="moss" dot>Sold</Badge>;
+  if (status === 'cancelled') return <Badge tone="danger" dot>Cancelled</Badge>;
+  return <Badge tone="neutral" dot>{status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Expired'}</Badge>;
+};
+
+const canEditItem = (item) => {
+  const createdAt = new Date(item.created_at);
+  const now = new Date();
+  const timeDifferenceInMinutes = (now - createdAt) / (1000 * 60);
+  return !item.current_highest_bid && item.status === 'active' && timeDifferenceInMinutes <= 30;
+};
+
+const ListingSkeleton = () => (
+  <div className="space-y-3">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <Card key={i} className="flex items-center gap-4 p-3 sm:p-4">
+        <Skeleton className="size-16 shrink-0 sm:size-20" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-2/3 max-w-xs" />
+          <Skeleton className="h-3 w-1/3 max-w-[140px]" />
+        </div>
+        <Skeleton className="hidden h-8 w-24 sm:block" />
+      </Card>
+    ))}
+  </div>
+);
 
 const MyListings = () => {
   const navigate = useNavigate();
@@ -43,228 +93,210 @@ const MyListings = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      active: 'bg-green-100 text-green-800',
-      expired: 'bg-gray-100 text-gray-800',
-      sold: 'bg-blue-100 text-blue-800',
-      cancelled: 'bg-red-100 text-red-800',
-    };
-
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || styles.active}`}>
-        {status}
-      </span>
-    );
-  };
+  // Summary figures derived from the loaded listings
+  const activeCount = items.filter((i) => i.status === 'active').length;
+  const totalBids = items.reduce((sum, i) => sum + (Number(i.bid_count) || 0), 0);
+  const totalViews = items.reduce((sum, i) => sum + (Number(i.view_count) || 0), 0);
+  const bidValue = items.reduce((sum, i) => sum + (Number(i.current_highest_bid) || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
-            <Link
-              to="/create-listing"
-              className="bg-primary-600 text-white px-6 py-3 rounded-md font-medium hover:bg-primary-700 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create New Listing
-            </Link>
-          </div>
+    <Page>
+      <PageHeader
+        eyebrow={
+          <>
+            <Store className="size-3.5" /> Seller studio
+          </>
+        }
+        title="Selling"
+        description="Track every lot you've listed — live bids, views and time left, all in one place."
+        actions={
+          <Button to="/create-listing" variant="flare">
+            <Plus className="size-4" strokeWidth={2.4} />
+            List an item
+          </Button>
+        }
+      />
 
-          {/* Status Filter */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStatusFilter('')}
-              className={`px-4 py-2 rounded-md font-medium ${
-                statusFilter === '' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 border border-gray-300'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setStatusFilter('active')}
-              className={`px-4 py-2 rounded-md font-medium ${
-                statusFilter === 'active' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 border border-gray-300'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setStatusFilter('expired')}
-              className={`px-4 py-2 rounded-md font-medium ${
-                statusFilter === 'expired' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 border border-gray-300'
-              }`}
-            >
-              Expired
-            </button>
-          </div>
+      {!error && (
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Stat label="Listings" value={loading ? '—' : items.length} icon={Tag} />
+          <Stat label="Live now" value={loading ? '—' : activeCount} icon={Store} />
+          <Stat label="Bids received" value={loading ? '—' : totalBids} icon={Gavel} />
+          <Stat
+            label="Bid value"
+            value={loading ? '—' : formatMoney(bidValue).replace(/\.00$/, '')}
+            hint={loading ? undefined : `${totalViews} total views`}
+            icon={Eye}
+          />
         </div>
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your listings...</p>
+      <Tabs tabs={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} layoutId="listings-tabs" className="mb-6" />
+
+      {loading && <ListingSkeleton />}
+
+      {!loading && error && (
+        <Alert tone="danger" title="We couldn't load your listings">
+          <p>{error}</p>
+          <button
+            onClick={fetchMyListings}
+            className="mt-2 inline-flex items-center gap-1.5 font-medium underline-offset-4 hover:underline"
+          >
+            <RotateCw className="size-3.5" /> Try again
+          </button>
+        </Alert>
+      )}
+
+      {!loading && !error && items.length > 0 && (
+        <Card className="overflow-hidden">
+          {/* Desktop column headings */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_110px_130px_130px_70px_150px] gap-4 border-b border-line bg-paper/60 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-faint lg:grid">
+            <span>Item</span>
+            <span>Status</span>
+            <span>Price</span>
+            <span>Time left</span>
+            <span>Views</span>
+            <span className="text-right">Actions</span>
           </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {/* Listings Table */}
-        {!loading && !error && items.length > 0 && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Item
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Price
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time Left
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Views
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <img
-                            src={item.image_urls?.[0] || 'https://via.placeholder.com/100'}
-                            alt={item.title}
-                            className="h-16 w-16 object-cover rounded"
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/100?text=No+Image';
-                            }}
-                          />
-                          <div className="ml-4">
-                            <Link
-                              to={`/items/${item.id}`}
-                              className="text-sm font-medium text-gray-900 hover:text-primary-600"
-                            >
-                              {item.title}
-                            </Link>
-                            <div className="text-sm text-gray-500">{item.category}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(item.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          ${(item.current_highest_bid || item.starting_price)?.toFixed(2)}
-                        </div>
-                        {item.current_highest_bid && (
-                          <div className="text-xs text-gray-500">Current bid</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {item.status === 'active' ? (
-                          <Countdown endTime={item.auction_end_time} />
-                        ) : (
-                          <span className="text-sm text-gray-500">
-                            {format(new Date(item.auction_end_time), 'MMM dd, yyyy')}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.view_count || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center gap-2">
+          <ul className="divide-y divide-line">
+            <AnimatePresence initial={false}>
+              {items.map((item, index) => {
+                const canEdit = canEditItem(item);
+                return (
+                  <motion.li
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE, delay: Math.min(index, 8) * 0.03 } }}
+                    exit={{ opacity: 0, x: -24, transition: { duration: 0.25 } }}
+                    className="group grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 p-4 transition-colors hover:bg-paper/50 lg:grid-cols-[minmax(0,1fr)_110px_130px_130px_70px_150px] lg:items-center lg:px-5"
+                  >
+                    {/* Item */}
+                    <div className="contents lg:flex lg:min-w-0 lg:items-center lg:gap-4">
+                      <Link
+                        to={`/items/${item.id}`}
+                        className="row-span-2 block size-20 shrink-0 overflow-hidden rounded-xl bg-paper-2 lg:row-span-1 lg:size-16"
+                      >
+                        <img
+                          src={item.image_urls?.[0] || FALLBACK_IMG}
+                          alt={item.title}
+                          loading="lazy"
+                          className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.src = FALLBACK_IMG;
+                          }}
+                        />
+                      </Link>
+                      <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-2">
                           <Link
                             to={`/items/${item.id}`}
-                            className="text-primary-600 hover:text-primary-900"
+                            className="line-clamp-1 text-[15px] font-semibold text-ink hover:text-flare-deep"
                           >
-                            View
+                            {item.title}
                           </Link>
-                          {!item.current_highest_bid && item.status === 'active' && (
-                            <>
-                              <span className="text-gray-300">|</span>
-                              <button
-                                onClick={() => navigate(`/items/${item.id}/edit`)}
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                Edit
-                              </button>
-                              <span className="text-gray-300">|</span>
-                              <button
-                                onClick={() => handleDelete(item.id, item.title)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
+                          <span className="shrink-0 lg:hidden">
+                            <StatusBadge status={item.status} />
+                          </span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                        <p className="mt-0.5 text-[13px] text-muted">{item.category}</p>
+                      </div>
+                    </div>
 
-        {/* Empty State */}
-        {!loading && !error && items.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No listings</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {statusFilter ? `No ${statusFilter} listings found.` : 'Get started by creating a new listing.'}
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/create-listing"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create New Listing
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+                    {/* Mobile meta row */}
+                    <div className="col-start-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] lg:hidden">
+                      <span className="tabular font-mono font-semibold text-ink">
+                        {formatMoney(item.current_highest_bid || item.starting_price)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-muted">
+                        <Gavel className="size-3.5" /> {item.bid_count || 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-muted">
+                        <Eye className="size-3.5" /> {item.view_count || 0}
+                      </span>
+                      {item.status === 'active' ? (
+                        <Countdown endTime={item.auction_end_time} className="text-[13px]" />
+                      ) : (
+                        <span className="text-muted">{format(new Date(item.auction_end_time), 'MMM dd, yyyy')}</span>
+                      )}
+                    </div>
+
+                    {/* Desktop cells */}
+                    <div className="hidden lg:block">
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="hidden lg:block">
+                      <p className="tabular font-mono text-[15px] font-semibold text-ink">
+                        {formatMoney(item.current_highest_bid || item.starting_price)}
+                      </p>
+                      <p className="text-[12px] text-muted">
+                        {item.current_highest_bid ? `${item.bid_count || 0} bids` : 'Starting price'}
+                      </p>
+                    </div>
+                    <div className="hidden text-sm lg:block">
+                      {item.status === 'active' ? (
+                        <Countdown endTime={item.auction_end_time} />
+                      ) : (
+                        <span className="text-muted">{format(new Date(item.auction_end_time), 'MMM dd, yyyy')}</span>
+                      )}
+                    </div>
+                    <div className="tabular hidden text-sm text-muted lg:block">{item.view_count || 0}</div>
+
+                    {/* Actions */}
+                    <div className="col-span-2 flex items-center justify-end gap-1 border-t border-dashed border-line pt-3 lg:col-span-1 lg:border-0 lg:pt-0">
+                      {canEdit && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${item.title}`}
+                            title="Edit"
+                            onClick={() => navigate(`/items/${item.id}/edit`)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="danger-ghost"
+                            size="icon-sm"
+                            aria-label={`Delete ${item.title}`}
+                            title="Delete"
+                            onClick={() => handleDelete(item.id, item.title)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                      <Button to={`/items/${item.id}`} variant="outline" size="sm" className="ml-1">
+                        View
+                        <ArrowUpRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </ul>
+        </Card>
+      )}
+
+      {!loading && !error && items.length === 0 && (
+        <EmptyState
+          icon={PackageOpen}
+          title="No listings yet"
+          description={
+            statusFilter
+              ? `You don't have any ${statusFilter} listings right now.`
+              : 'Turn that closet clear-out into a live auction. Listing takes about a minute.'
+          }
+          action={
+            <Button to="/create-listing" variant="flare">
+              <Plus className="size-4" strokeWidth={2.4} />
+              List your first item
+            </Button>
+          }
+        />
+      )}
+    </Page>
   );
 };
 

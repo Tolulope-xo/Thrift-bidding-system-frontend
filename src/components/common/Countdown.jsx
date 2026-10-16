@@ -1,22 +1,30 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow, isPast, differenceInSeconds } from 'date-fns';
 import PropTypes from 'prop-types';
 
-const Countdown = ({ endTime, onExpire, showFull = false }) => {
+const Countdown = ({ endTime, onExpire = null, showFull = false, className = '' }) => {
   const [timeLeft, setTimeLeft] = useState('');
   const [isExpired, setIsExpired] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  // Keep the latest callback without restarting the interval on every parent render
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
 
   useEffect(() => {
+    let fired = false;
     const calculateTimeLeft = () => {
       const end = new Date(endTime);
 
       if (isPast(end)) {
         setIsExpired(true);
-        setTimeLeft('Auction ended');
+        setTimeLeft('Ended');
         setSecondsLeft(0);
-        if (onExpire) onExpire();
+        if (!fired && onExpireRef.current) {
+          fired = true;
+          onExpireRef.current();
+        }
         return;
       }
 
@@ -28,13 +36,14 @@ const Countdown = ({ endTime, onExpire, showFull = false }) => {
         const hours = Math.floor((seconds % 86400) / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
+        const pad = (n) => String(n).padStart(2, '0');
 
         if (days > 0) {
-          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+          setTimeLeft(`${days}d ${pad(hours)}h ${pad(minutes)}m`);
         } else if (hours > 0) {
-          setTimeLeft(`${hours}h ${minutes}m ${secs}s`);
+          setTimeLeft(`${hours}h ${pad(minutes)}m ${pad(secs)}s`);
         } else {
-          setTimeLeft(`${minutes}m ${secs}s`);
+          setTimeLeft(`${minutes}m ${pad(secs)}s`);
         }
       } else {
         setTimeLeft(formatDistanceToNow(end, { addSuffix: false }));
@@ -45,35 +54,18 @@ const Countdown = ({ endTime, onExpire, showFull = false }) => {
     const interval = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(interval);
-  }, [endTime, onExpire, showFull]);
+  }, [endTime, showFull]);
 
-  // Determine color based on time left
+  // Urgency scale: ended → under 1h → under 6h → calm
   const getColorClass = () => {
-    if (isExpired) {
-      return 'text-red-600';
-    }
-
-    // Less than 1 hour (3600 seconds) - Red/Urgent
-    if (secondsLeft < 3600) {
-      return 'text-red-600 animate-pulse';
-    }
-
-    // Less than 6 hours - Orange/Warning
-    if (secondsLeft < 21600) {
-      return 'text-orange-600';
-    }
-
-    // Less than 12 hours - Yellow/Caution
-    if (secondsLeft < 43200) {
-      return 'text-yellow-600';
-    }
-
-    // More than 12 hours - Green/Safe
-    return 'text-green-600';
+    if (isExpired) return 'text-muted';
+    if (secondsLeft < 3600) return 'text-flare';
+    if (secondsLeft < 21600) return 'text-[#c46a0a]';
+    return 'text-ink';
   };
 
   return (
-    <span className={`font-medium ${getColorClass()}`}>
+    <span className={`tabular font-mono font-medium ${getColorClass()} ${className}`}>
       {timeLeft}
     </span>
   );
@@ -82,12 +74,8 @@ const Countdown = ({ endTime, onExpire, showFull = false }) => {
 Countdown.propTypes = {
   endTime: PropTypes.string.isRequired,
   onExpire: PropTypes.func,
-  showFull: PropTypes.bool
-};
-
-Countdown.defaultProps = {
-  onExpire: null,
-  showFull: false
+  showFull: PropTypes.bool,
+  className: PropTypes.string,
 };
 
 export default Countdown;

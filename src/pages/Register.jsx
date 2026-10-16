@@ -1,8 +1,62 @@
-
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { AlertCircle, ArrowRight, AtSign, Check, CheckCircle2, Mail, User } from 'lucide-react';
 import authService from '../services/authService';
 import useAuthStore from '../store/authStore';
+import AuthLayout, { AuthFootnote, AuthHeading, AuthItem, InlineLink, PasswordInput } from '../components/auth/AuthLayout';
+import { Alert, Button, Field, Input } from '../components/ui';
+
+// Mirrors the validation rules below so the meter never disagrees with submit
+const PASSWORD_CHECKS = [
+  { label: '8+ characters', test: (p) => p.length >= 8 },
+  { label: 'Uppercase', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Lowercase', test: (p) => /[a-z]/.test(p) },
+  { label: 'Number', test: (p) => /\d/.test(p) },
+];
+const STRENGTH = [
+  { label: 'Too weak', color: 'bg-danger' },
+  { label: 'Weak', color: 'bg-danger' },
+  { label: 'Fair', color: 'bg-[#e08a1a]' },
+  { label: 'Almost', color: 'bg-gold' },
+  { label: 'Strong', color: 'bg-moss-2' },
+];
+
+const PasswordMeter = ({ password }) => {
+  const passed = PASSWORD_CHECKS.filter((c) => c.test(password)).length;
+  const level = STRENGTH[passed];
+  if (!password) return null;
+  return (
+    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2.5 overflow-hidden">
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 gap-1">
+          {PASSWORD_CHECKS.map((_, i) => (
+            <div key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-paper-3">
+              <motion.div
+                className={`h-full rounded-full ${level.color}`}
+                initial={false}
+                animate={{ width: i < passed ? '100%' : '0%' }}
+                transition={{ duration: 0.35 }}
+              />
+            </div>
+          ))}
+        </div>
+        <span className="w-16 text-right text-[12px] font-medium text-muted">{level.label}</span>
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {PASSWORD_CHECKS.map((c) => {
+          const ok = c.test(password);
+          return (
+            <li key={c.label} className={`inline-flex items-center gap-1 text-[12px] transition-colors ${ok ? 'text-moss' : 'text-faint'}`}>
+              <Check className="size-3" strokeWidth={3} />
+              {c.label}
+            </li>
+          );
+        })}
+      </ul>
+    </motion.div>
+  );
+};
 
 const Register = () => {
   const navigate = useNavigate();
@@ -97,8 +151,9 @@ const Register = () => {
     clearError();
 
     try {
+      // eslint-disable-next-line no-unused-vars
       const { confirmPassword, ...registrationData } = formData;
-      const response = await authService.register(registrationData);
+      await authService.register(registrationData);
 
       setSuccessMessage('Registration successful! Redirecting...');
       setTimeout(() => {
@@ -122,162 +177,136 @@ const Register = () => {
     }
   };
 
+  const confirmMatches = formData.confirmPassword && formData.confirmPassword === formData.password;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Join our thrift bidding community
+    <AuthLayout
+      image="/img/closet.jpg"
+      quote="I sold a chair I never sat in and bought a camera I use every day."
+      attribution="Theo K. — seller & bidder"
+    >
+      <AuthHeading
+        eyebrow="Join ThriftBid"
+        title={
+          <>
+            Create your <span className="italic">account.</span>
+          </>
+        }
+        description="Bid on one-of-a-kind finds and list your own in under a minute."
+      />
+
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        {apiError && (
+          <Alert tone="danger" icon={AlertCircle}>
+            {apiError}
+          </Alert>
+        )}
+
+        {successMessage && (
+          <Alert tone="moss" icon={CheckCircle2}>
+            {successMessage}
+          </Alert>
+        )}
+
+        <AuthItem>
+          <Field label="Full name" error={errors.full_name} id="full_name">
+            <Input
+              id="full_name"
+              name="full_name"
+              type="text"
+              icon={User}
+              autoComplete="name"
+              placeholder="Maya Rivera"
+              value={formData.full_name}
+              onChange={handleChange}
+              aria-invalid={!!errors.full_name}
+              className="h-12"
+            />
+          </Field>
+        </AuthItem>
+
+        <AuthItem className="grid gap-5 sm:grid-cols-2">
+          <Field label="Username" error={errors.username} id="username">
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              icon={AtSign}
+              autoComplete="username"
+              placeholder="maya_finds"
+              value={formData.username}
+              onChange={handleChange}
+              aria-invalid={!!errors.username}
+              className="h-12"
+            />
+          </Field>
+          <Field label="Email" error={errors.email} id="email">
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              icon={Mail}
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              aria-invalid={!!errors.email}
+              className="h-12"
+            />
+          </Field>
+        </AuthItem>
+
+        <AuthItem>
+          <Field label="Password" error={errors.password} id="password">
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="new-password"
+              placeholder="Create a password"
+              value={formData.password}
+              onChange={handleChange}
+              aria-invalid={!!errors.password}
+            />
+          </Field>
+          {!errors.password && <PasswordMeter password={formData.password} />}
+        </AuthItem>
+
+        <AuthItem>
+          <Field
+            label="Confirm password"
+            error={errors.confirmPassword}
+            hint={confirmMatches ? 'Passwords match' : undefined}
+            id="confirmPassword"
+          >
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              autoComplete="new-password"
+              placeholder="Repeat your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              aria-invalid={!!errors.confirmPassword}
+            />
+          </Field>
+        </AuthItem>
+
+        <AuthItem className="pt-1">
+          <Button type="submit" size="lg" block loading={isSubmitting} className="group h-12">
+            {isSubmitting ? 'Creating account…' : 'Create account'}
+            {!isSubmitting && (
+              <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+            )}
+          </Button>
+          <p className="mt-3 text-center text-[12px] text-faint">
+            By continuing you agree to bid fairly and sell honestly.
           </p>
-        </div>
+        </AuthItem>
+      </form>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {apiError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {apiError}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              {successMessage}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Username */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                value={formData.username}
-                onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.username ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-              />
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
-              )}
-            </div>
-
-            {/* Full Name */}
-            <div>
-              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <input
-                id="full_name"
-                name="full_name"
-                type="text"
-                autoComplete="name"
-                value={formData.full_name}
-                onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.full_name ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-              />
-              {errors.full_name && (
-                <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                value={formData.password}
-                onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-              />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex justify-center cursor-pointer py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-primary-700 focus:outline-none "
-            >
-              {isSubmitting ? 'Creating account...' : 'Create account'}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
+      <AuthFootnote>
+        Already have an account? <InlineLink to="/login">Sign in</InlineLink>
+      </AuthFootnote>
+    </AuthLayout>
   );
 };
 

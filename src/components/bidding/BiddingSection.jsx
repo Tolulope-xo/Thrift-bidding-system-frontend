@@ -1,10 +1,45 @@
-
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowRight, Gavel, Lock, ShieldCheck } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import bidsService from '../../services/bidsService';
+import { Button } from '../ui';
+import { EASE, formatMoney } from '../../lib/motion';
 
-const BiddingSection = ({ item, onBidPlaced, disabled }) => {
+/** Price that slides + flashes whenever its value changes */
+export const AnimatedPrice = ({ value, className = '' }) => (
+  <span className={`relative inline-flex overflow-hidden ${className}`}>
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.span
+        key={value}
+        initial={{ y: '70%', opacity: 0, color: '#ff4f1a' }}
+        animate={{ y: '0%', opacity: 1, color: 'var(--color-ink)' }}
+        exit={{ y: '-70%', opacity: 0 }}
+        transition={{ duration: 0.5, ease: EASE, color: { duration: 1.4 } }}
+        className="tabular inline-block"
+      >
+        {formatMoney(value)}
+      </motion.span>
+    </AnimatePresence>
+  </span>
+);
+
+AnimatedPrice.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  className: PropTypes.string,
+};
+
+const Shell = ({ title, children }) => (
+  <div className="rounded-2xl border border-line bg-paper/70 p-5">
+    {title && <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>}
+    {children}
+  </div>
+);
+
+Shell.propTypes = { title: PropTypes.node, children: PropTypes.node };
+
+const BiddingSection = ({ item, onBidPlaced = null, disabled = false }) => {
   const { isAuthenticated, user } = useAuthStore();
   const [bidAmount, setBidAmount] = useState('');
   const [error, setError] = useState('');
@@ -90,11 +125,6 @@ const BiddingSection = ({ item, onBidPlaced, disabled }) => {
       console.error('Bid placement error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to place bid';
       setError(errorMessage);
-
-      // If minimum bid changed (conflict), update minimum
-      if (err.response?.data?.data?.minimumBid) {
-        // Component will recalculate on re-render
-      }
     } finally {
       setIsSubmitting(false);
     }
@@ -103,132 +133,147 @@ const BiddingSection = ({ item, onBidPlaced, disabled }) => {
   // If not authenticated, show login prompt
   if (!isAuthenticated) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Place a Bid</h3>
-        <div className="text-center py-4">
-          <p className="text-gray-600 mb-4">Please log in to place a bid</p>
-          <a
-            href="/login"
-            className="inline-block bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700"
-          >
-            Log In
-          </a>
+      <Shell>
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-card text-ink shadow-soft">
+            <Lock className="size-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-ink">Log in to place a bid</p>
+            <p className="mt-0.5 text-[13px] text-muted">Join free and bid on this lot in seconds.</p>
+          </div>
         </div>
-      </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button to="/login" variant="primary" size="md">Log in</Button>
+          <Button to="/register" variant="outline" size="md">Sign up</Button>
+        </div>
+      </Shell>
     );
   }
 
   // If user is the owner, show message
   if (isOwner) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Place a Bid</h3>
-        <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-gray-600">You cannot bid on your own item</p>
-        </div>
-      </div>
+      <Shell>
+        <p className="text-center text-sm text-muted">You can&apos;t bid on your own listing.</p>
+      </Shell>
     );
   }
 
   // If auction has ended, show message
   if (auctionEnded) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Auction Ended</h3>
-        <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-gray-600">This auction has ended</p>
-          {item.current_highest_bid && (
-            <p className="mt-2 text-lg font-bold text-gray-900">
-              Final Price: ${parseFloat(item.current_highest_bid).toFixed(2)}
-            </p>
-          )}
-        </div>
-      </div>
+      <Shell title="Bidding closed">
+        <p className="text-sm text-muted">This auction has ended.</p>
+        {item.current_highest_bid && (
+          <p className="mt-2 text-sm text-ink-2">
+            Final price{' '}
+            <span className="tabular font-mono text-lg font-semibold text-ink">
+              {formatMoney(item.current_highest_bid)}
+            </span>
+          </p>
+        )}
+      </Shell>
     );
   }
 
+  const busy = isSubmitting || disabled;
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Place a Bid</h3>
-
-      {/* Current Bid Info */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-gray-600">Current Bid:</span>
-          <span className="text-2xl font-bold text-gray-900">
-            ${item.current_highest_bid
-              ? parseFloat(item.current_highest_bid).toFixed(2)
-              : parseFloat(item.starting_price).toFixed(2)}
-          </span>
-        </div>
-        {item.bid_count > 0 && (
-          <p className="text-xs text-gray-500 text-right">
-            {item.bid_count} bid{item.bid_count !== 1 ? 's' : ''}
-          </p>
-        )}
-      </div>
-
-      {/* Minimum Bid */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-600">
-          Minimum bid: <span className="font-semibold text-gray-900">${minimumBid.toFixed(2)}</span>
+    <div className="rounded-2xl border border-line bg-paper/70 p-4 sm:p-5">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold text-ink">Place your bid</h3>
+        <p className="text-[13px] text-muted">
+          Min <span className="tabular font-mono font-semibold text-ink">{formatMoney(minimumBid)}</span>
         </p>
       </div>
 
-      {/* Suggested Bids */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-600 mb-2">Quick bids:</p>
-        <div className="grid grid-cols-2 gap-2">
-          {suggestedBids.map((amount, index) => (
-            <button
+      {/* Quick bids */}
+      <div className="no-scrollbar -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+        {suggestedBids.map((amount, index) => {
+          const selected = bidAmount === amount.toFixed(2);
+          return (
+            <motion.button
               key={index}
               type="button"
+              whileTap={{ scale: 0.94 }}
               onClick={() => handleSuggestedBidClick(amount)}
-              disabled={isSubmitting || disabled}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={busy}
+              className={`tabular shrink-0 rounded-full border px-3.5 py-2 font-mono text-[13px] font-medium transition-colors disabled:opacity-50 ${
+                selected
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line-strong bg-card text-ink hover:border-ink'
+              }`}
             >
-              ${amount.toFixed(2)}
-            </button>
-          ))}
-        </div>
+              {index === 0 ? 'Min · ' : '+'}
+              {index === 0 ? `$${amount.toFixed(2)}` : `$${(amount - minimumBid).toFixed(0)}`}
+            </motion.button>
+          );
+        })}
       </div>
 
-      {/* Bid Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="bidAmount" className="block text-sm font-medium text-gray-700 mb-2">
-            Your Bid ($)
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+      <form onSubmit={handleSubmit} noValidate>
+        <label htmlFor="bidAmount" className="sr-only">
+          Your bid in dollars
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted">
+              $
+            </span>
             <input
               type="text"
+              inputMode="decimal"
               id="bidAmount"
               value={bidAmount}
               onChange={handleBidChange}
-              disabled={isSubmitting || disabled}
-              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
-              placeholder="0.00"
+              disabled={busy}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'bid-error' : undefined}
+              className="field-input tabular h-13 pl-9 font-mono text-lg font-medium"
+              placeholder={minimumBid.toFixed(2)}
             />
           </div>
-          {error && (
-            <p className="mt-2 text-sm text-red-600">{error}</p>
-          )}
+          <Button
+            type="submit"
+            variant="flare"
+            size="lg"
+            loading={isSubmitting}
+            disabled={busy || !bidAmount}
+            className="group sm:min-w-40"
+          >
+            {isSubmitting ? (
+              'Placing…'
+            ) : (
+              <>
+                <Gavel className="size-4" />
+                Place bid
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
+          </Button>
         </div>
-
-        <button
-          type="submit"
-          disabled={isSubmitting || disabled || !bidAmount}
-          className="w-full bg-primary-600 text-white px-6 py-3 rounded-md font-medium bg-black hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? 'Placing Bid...' : 'Place Bid'}
-        </button>
+        <AnimatePresence>
+          {error && (
+            <motion.p
+              id="bid-error"
+              role="alert"
+              initial={{ opacity: 0, x: 0 }}
+              animate={{ opacity: 1, x: [0, -6, 6, -3, 3, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-2 text-[13px] text-danger"
+            >
+              {error}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </form>
 
-      {/* Info Text */}
-      <div className="mt-4 text-xs text-gray-500">
-        <p>By placing a bid, you agree to purchase this item if you win.</p>
-      </div>
+      <p className="mt-3 flex items-center gap-1.5 text-[12px] text-muted">
+        <ShieldCheck className="size-3.5" />
+        By bidding you agree to buy this item if you win.
+      </p>
     </div>
   );
 };
@@ -244,11 +289,6 @@ BiddingSection.propTypes = {
   }).isRequired,
   onBidPlaced: PropTypes.func,
   disabled: PropTypes.bool
-};
-
-BiddingSection.defaultProps = {
-  onBidPlaced: null,
-  disabled: false
 };
 
 export default BiddingSection;

@@ -1,83 +1,94 @@
-
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { Clock, Gavel, Star } from 'lucide-react';
 import Countdown from './Countdown';
+import { EASE, formatMoney } from '../../lib/motion';
 
-const ItemCard = ({ item }) => {
-  const mainImage = item.image_urls?.[0] || '/placeholder-image.png';
+const FALLBACK =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#ece6da"/><path d="M170 130h60M200 130v50" stroke="#a89f92" stroke-width="10" stroke-linecap="round"/></svg>`
+  );
+
+const ItemCard = ({ item, index = 0 }) => {
+  const mainImage = item.image_urls?.[0] || FALLBACK;
   const currentPrice = item.current_highest_bid || item.starting_price;
+  const ended = item.auction_end_time && new Date(item.auction_end_time) <= new Date();
 
   return (
-    <Link
-      to={`/items/${item.id}`}
-      className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden"
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.55, ease: EASE, delay: Math.min(index, 8) * 0.04 }}
     >
-      {/* Image */}
-      <div className="relative h-48 bg-gray-200">
-        <img
-          src={mainImage}
-          alt={item.title}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
-          }}
-        />
-        {/* Category Badge */}
-        <div className="absolute top-2 right-2 bg-primary-600 text-white px-2 py-1 rounded text-xs font-medium">
-          {item.category}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        {/* Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
-          {item.title}
-        </h3>
-
-        {/* Price */}
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-2xl font-bold text-primary-600">
-            ${currentPrice?.toFixed(2)}
-          </span>
-          {item.current_highest_bid && (
-            <span className="text-sm text-gray-500">(current bid)</span>
-          )}
-        </div>
-
-        {/* Metadata */}
-        <div className="space-y-1 text-sm text-gray-600">
-          {/* Seller */}
-          {item.users?.username && (
-            <div className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <span>{item.users.username}</span>
-              {item.users.seller_rating > 0 && (
-                <span className="text-yellow-500">★ {item.users.seller_rating.toFixed(1)}</span>
-              )}
-            </div>
-          )}
-
-          {/* Time Remaining */}
-          <div className="flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      <Link
+        to={`/items/${item.id}`}
+        className="group block overflow-hidden rounded-2xl border border-line bg-card shadow-soft transition-[box-shadow,transform,border-color] duration-500 ease-[var(--ease-out-expo)] hover:-translate-y-1 hover:border-line-strong hover:shadow-lift"
+      >
+        <div className="relative aspect-[4/3] overflow-hidden bg-paper-2">
+          <img
+            src={mainImage}
+            alt={item.title}
+            loading="lazy"
+            className="size-full object-cover transition-transform duration-[900ms] ease-[var(--ease-out-expo)] group-hover:scale-[1.06]"
+            onError={(e) => {
+              e.currentTarget.src = FALLBACK;
+            }}
+          />
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
+            <span className="rounded-full bg-card/90 px-2.5 py-1 text-[11px] font-medium text-ink-2 backdrop-blur">
+              {item.category}
+            </span>
+            {!ended && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/85 px-2.5 py-1 text-[11px] font-medium text-paper backdrop-blur">
+                <span className="size-1.5 rounded-full bg-flare animate-pulse-dot" />
+                Live
+              </span>
+            )}
+          </div>
+          <div className="absolute inset-x-3 bottom-3 flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1.5 text-[12px] backdrop-blur w-fit">
+            <Clock className="size-3.5 text-muted" />
             <Countdown endTime={item.auction_end_time} />
-            <span className="text-gray-500">left</span>
-          </div>
-
-          {/* Condition */}
-          <div className="flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{item.condition}</span>
+            {!ended && <span className="text-muted">left</span>}
           </div>
         </div>
-      </div>
-    </Link>
+
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="line-clamp-1 text-[15px] font-semibold text-ink">{item.title}</h3>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-[12px] text-muted">
+            <span>{item.condition}</span>
+            {item.users?.username && (
+              <>
+                <span className="size-0.5 rounded-full bg-faint" />
+                <span className="truncate">@{item.users.username}</span>
+                {item.users.seller_rating > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-ink-2">
+                    <Star className="size-3 fill-gold text-gold" />
+                    {Number(item.users.seller_rating).toFixed(1)}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-end justify-between border-t border-dashed border-line pt-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-faint">
+                {item.current_highest_bid ? 'Current bid' : 'Starting at'}
+              </p>
+              <p className="tabular font-mono text-lg font-semibold text-ink">{formatMoney(currentPrice)}</p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[12px] text-muted">
+              <Gavel className="size-3.5" />
+              {item.bid_count || 0}
+            </span>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
   );
 };
 

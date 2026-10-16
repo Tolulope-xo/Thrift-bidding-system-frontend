@@ -1,12 +1,47 @@
-
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  BadgeCheck,
+  Bell,
+  CalendarDays,
+  ChevronRight,
+  Gavel,
+  Heart,
+  LogOut,
+  Mail,
+  MapPin,
+  Pencil,
+  Star,
+  Store,
+} from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import authService from '../services/authService';
+import { Alert, Avatar, Badge, Button, Card, Field, Input, Page, Spinner, Textarea } from '../components/ui';
+import { EASE } from '../lib/motion';
+
+const QUICK_LINKS = [
+  { to: '/my-listings', label: 'Selling', hint: 'Your listings & bids received', icon: Store },
+  { to: '/my-bids', label: 'My bids', hint: 'Lots you are bidding on', icon: Gavel },
+  { to: '/favorites', label: 'Saved', hint: 'Your watchlist', icon: Heart },
+  { to: '/settings/notifications', label: 'Notification settings', hint: 'Outbid, ending-soon & email alerts', icon: Bell },
+];
+
+const InfoRow = ({ icon: Icon, label, children }) => (
+  <div className="flex items-start gap-3 py-3.5">
+    <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-paper-2 text-muted">
+      <Icon className="size-4" />
+    </span>
+    <div className="min-w-0">
+      <p className="text-[12px] uppercase tracking-wider text-faint">{label}</p>
+      <div className="mt-0.5 break-words text-[15px] text-ink">{children}</div>
+    </div>
+  </div>
+);
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, logout, updateUser } = useAuthStore();
+  const { user } = useAuthStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,183 +116,135 @@ const Profile = () => {
   };
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
+    return <Spinner className="min-h-[60vh]" label="Loading profile..." />;
   }
 
+  const displayName = user.full_name || user.username;
+  const rating = user.seller_rating ? Number(user.seller_rating) : 0;
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—';
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-600 hover:border-red-700 rounded-md"
-            >
-              Logout
-            </button>
-          </div>
-
-          {/* Messages */}
-          {error && (
-            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="mx-6 mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              {successMessage}
-            </div>
-          )}
-
-          {/* Profile Content */}
-          <div className="px-6 py-6">
-            {!isEditing ? (
-              /* View Mode */
-              <div className="space-y-6">
-                {/* Profile Picture */}
-                <div className="flex items-center space-x-6">
-                  <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center">
-                    {user.profile_picture_url ? (
-                      <img
-                        src={user.profile_picture_url}
-                        alt={user.full_name}
-                        className="h-24 w-24 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl font-bold text-primary-600">
-                        {user.full_name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{user.full_name}</h2>
-                    <p className="text-gray-500">@{user.username}</p>
-                  </div>
+    <Page width="max-w-6xl">
+      {/* Identity header */}
+      <Card className="relative mb-6 overflow-hidden">
+        <div className="grain relative h-28 bg-gradient-to-br from-ink via-ink-2 to-moss sm:h-36">
+          <div className="absolute -right-10 -top-16 size-56 rounded-full bg-flare/30 blur-3xl" />
+        </div>
+        <div className="px-5 pb-6 sm:px-8">
+          <div className="relative -mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <Avatar
+                name={displayName}
+                src={user.profile_picture_url || undefined}
+                size="xl"
+                className="ring-4 ring-card"
+              />
+              <div className="min-w-0 pb-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-display text-4xl leading-none text-ink sm:text-5xl">{displayName}</h1>
+                  {user.email_verified_at ? (
+                    <Badge tone="moss">
+                      <BadgeCheck className="size-3.5" /> Verified
+                    </Badge>
+                  ) : (
+                    <Badge tone="gold">Unverified</Badge>
+                  )}
                 </div>
-
-                {/* Profile Info */}
-                <div className="grid grid-cols-1 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <p className="mt-1 text-gray-900">{user.email}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Location</label>
-                    <p className="mt-1 text-gray-900">{user.location || 'Not specified'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Bio</label>
-                    <p className="mt-1 text-gray-900 whitespace-pre-wrap">
-                      {user.bio || 'No bio added yet'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Seller Rating</label>
-                    <div className="mt-1 flex items-center">
-                      <span className="text-2xl font-bold text-yellow-500">
-                        {user.seller_rating ? user.seller_rating.toFixed(1) : '0.0'}
-                      </span>
-                      <span className="ml-2 text-gray-500">/ 5.0</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Member Since</label>
-                    <p className="mt-1 text-gray-900">
-                      {new Date(user.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Edit Button */}
-                <div className="pt-4">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="w-full sm:w-auto px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    Edit Profile
-                  </button>
-                </div>
-
-                {/* Future Features */}
-                <div className="pt-6 border-t border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Links</h3>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => alert('Coming in Phase 2!')}
-                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-md border border-gray-200"
-                    >
-                      My Listings (Coming Soon)
-                    </button>
-                    <button
-                      onClick={() => alert('Coming in Phase 2!')}
-                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-md border border-gray-200"
-                    >
-                      My Bids (Coming Soon)
-                    </button>
-                    <button
-                      onClick={() => alert('Coming in Phase 2!')}
-                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-md border border-gray-200"
-                    >
-                      Favorites (Coming Soon)
-                    </button>
-                  </div>
-                </div>
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                  <span>@{user.username}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="size-3.5 fill-gold text-gold" />
+                    <span className="tabular font-medium text-ink">{rating.toFixed(1)}</span> seller rating
+                  </span>
+                </p>
               </div>
+            </div>
+            <div className="flex gap-2">
+              {!isEditing && (
+                <Button variant="primary" size="sm" onClick={() => setIsEditing(true)}>
+                  <Pencil className="size-3.5" /> Edit profile
+                </Button>
+              )}
+              <Button variant="danger-ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="size-3.5" /> Log out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="space-y-3">
+        {error && <Alert tone="danger">{error}</Alert>}
+        {successMessage && <Alert tone="moss" icon={BadgeCheck}>{successMessage}</Alert>}
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="p-5 sm:p-8">
+          <AnimatePresence mode="wait" initial={false}>
+            {!isEditing ? (
+              <motion.div
+                key="view"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: EASE }}
+              >
+                <h2 className="font-display text-3xl text-ink">About</h2>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-2">
+                  {user.bio || <span className="text-muted">No bio added yet. Tell buyers what you collect and sell.</span>}
+                </p>
+                <div className="mt-6 divide-y divide-line border-t border-line">
+                  <InfoRow icon={Mail} label="Email">
+                    {user.email}
+                  </InfoRow>
+                  <InfoRow icon={MapPin} label="Location">
+                    {user.location || <span className="text-muted">Not specified</span>}
+                  </InfoRow>
+                  <InfoRow icon={Star} label="Seller rating">
+                    <span className="tabular font-mono font-semibold">{rating.toFixed(1)}</span>
+                    <span className="text-muted"> / 5.0</span>
+                  </InfoRow>
+                  <InfoRow icon={CalendarDays} label="Member since">
+                    {memberSince}
+                  </InfoRow>
+                </div>
+              </motion.div>
             ) : (
-              /* Edit Mode */
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <motion.form
+                key="edit"
+                onSubmit={handleSubmit}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="space-y-5"
+              >
                 <div>
-                  <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    id="full_name"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
+                  <h2 className="font-display text-3xl text-ink">Edit profile</h2>
+                  <p className="mt-1 text-sm text-muted">This is how buyers and sellers will see you.</p>
                 </div>
 
-                <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    placeholder="City, State"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Full name" id="full_name">
+                    <Input type="text" id="full_name" name="full_name" value={formData.full_name} onChange={handleChange} />
+                  </Field>
+                  <Field label="Location" id="location" optional>
+                    <Input
+                      type="text"
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleChange}
+                      placeholder="City, State"
+                      icon={MapPin}
+                    />
+                  </Field>
                 </div>
 
-                <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-                    Bio
-                  </label>
-                  <textarea
+                <Field label="Bio" id="bio" hint={`${formData.bio.length} / 500 characters`} optional>
+                  <Textarea
                     id="bio"
                     name="bio"
                     rows="4"
@@ -265,54 +252,52 @@ const Profile = () => {
                     onChange={handleChange}
                     placeholder="Tell us about yourself..."
                     maxLength="500"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
-                  <p className="mt-1 text-sm text-gray-500">
-                    {formData.bio.length} / 500 characters
-                  </p>
-                </div>
+                </Field>
 
-                <div>
-                  <label
-                    htmlFor="profile_picture_url"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Profile Picture URL
-                  </label>
-                  <input
+                <Field label="Profile picture URL" id="profile_picture_url" optional>
+                  <Input
                     type="url"
                     id="profile_picture_url"
                     name="profile_picture_url"
                     value={formData.profile_picture_url}
                     onChange={handleChange}
                     placeholder="https://example.com/image.jpg"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
-                </div>
+                </Field>
 
-                <div className="flex space-x-4">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={isLoading}
-                    className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  >
+                <div className="flex flex-col-reverse gap-2 border-t border-line pt-5 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="ghost" onClick={handleCancel} disabled={isLoading}>
                     Cancel
-                  </button>
+                  </Button>
+                  <Button type="submit" variant="primary" loading={isLoading}>
+                    {isLoading ? 'Saving...' : 'Save changes'}
+                  </Button>
                 </div>
-              </form>
+              </motion.form>
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </Card>
+
+        <aside className="space-y-3">
+          <p className="px-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Shortcuts</p>
+          <Card className="divide-y divide-line overflow-hidden">
+            {QUICK_LINKS.map(({ to, label, hint, icon: Icon }) => (
+              <Link key={to} to={to} className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-paper">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-paper-2 text-ink-2 transition-colors group-hover:bg-ink group-hover:text-paper">
+                  <Icon className="size-[18px]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-ink">{label}</span>
+                  <span className="block truncate text-[13px] text-muted">{hint}</span>
+                </span>
+                <ChevronRight className="size-4 text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
+              </Link>
+            ))}
+          </Card>
+        </aside>
       </div>
-    </div>
+    </Page>
   );
 };
 

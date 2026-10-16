@@ -1,7 +1,188 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------
+   ThriftBid design tokens
+   Paper / ink editorial base, "lot orange" accent for live + bidding,
+   moss for success. All portal + landing UI draws from these.
+------------------------------------------------------------------- */
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-paper: #f5f1ea;
+  --color-paper-2: #ece6da;
+  --color-paper-3: #e3dbcc;
+  --color-card: #fffdf9;
+  --color-ink: #17140f;
+  --color-ink-2: #3a342c;
+  --color-muted: #7a7064;
+  --color-faint: #a89f92;
+  --color-line: #e2d9c9;
+  --color-line-strong: #cfc4b1;
+
+  --color-flare: #ff4f1a;
+  --color-flare-deep: #e03a08;
+  --color-flare-soft: #ffe6dc;
+  --color-moss: #23412f;
+  --color-moss-2: #2f5a40;
+  --color-moss-soft: #dfe9df;
+  --color-gold: #e9b949;
+  --color-gold-soft: #fbf0d3;
+  --color-danger: #c8321e;
+  --color-danger-soft: #fbe3de;
+
+  /* Legacy `primary-*` utilities map onto the flare scale */
+  --color-primary-50: #fff4ef;
+  --color-primary-100: #ffe6dc;
+  --color-primary-200: #ffc9b3;
+  --color-primary-300: #ffa283;
+  --color-primary-400: #ff7a4d;
+  --color-primary-500: #ff4f1a;
+  --color-primary-600: #ff4f1a;
+  --color-primary-700: #e03a08;
+  --color-primary-800: #b32d06;
+  --color-primary-900: #7c1f04;
+
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-soft: 0 1px 2px rgb(23 20 15 / 0.04), 0 8px 24px -12px rgb(23 20 15 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(23 20 15 / 0.04), 0 24px 48px -20px rgb(23 20 15 / 0.28);
+  --shadow-flare: 0 10px 30px -10px rgb(255 79 26 / 0.55);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
+  --animate-pulse-dot: pulse-dot 1.6s var(--ease-out-expo) infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes pulse-dot {
+    0% { box-shadow: 0 0 0 0 rgb(255 79 26 / 0.55); }
+    80%, 100% { box-shadow: 0 0 0 10px rgb(255 79 26 / 0); }
+  }
+  @keyframes shimmer {
+    from { background-position: -400px 0; }
+    to { background-position: 400px 0; }
+  }
+}
+
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-padding-top: 6rem;
+  }
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-paper text-ink font-sans;
+    font-feature-settings: "ss01", "cv11";
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--color-flare);
+    color: white;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-flare);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button, [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  img {
+    -webkit-user-drag: none;
+  }
+}
+
+@layer components {
+  /* Display serif with optical tightening */
+  .font-display {
+    letter-spacing: -0.02em;
+    font-weight: 400;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Form controls — shared by every portal form */
+  .field-input {
+    @apply w-full rounded-xl border border-line bg-card px-4 py-3 text-[15px] text-ink placeholder:text-faint
+      transition-[border-color,box-shadow,background-color] duration-200 outline-none
+      hover:border-line-strong focus:border-ink focus:ring-4 focus:ring-ink/5
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .field-input[aria-invalid="true"] {
+    @apply border-danger focus:border-danger focus:ring-danger/10;
+  }
+  select.field-input {
+    @apply appearance-none pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237a7064' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+  }
+  .field-label {
+    @apply mb-1.5 block text-[13px] font-medium text-ink-2;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-paper-2) 0%, var(--color-paper-3) 50%, var(--color-paper-2) 100%);
+    background-size: 800px 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Paper grain overlay */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.07;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-fade-x {
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+}
+
+/* Lenis smooth scroll */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
