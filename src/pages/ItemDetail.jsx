@@ -27,7 +27,8 @@ import Countdown from '../components/common/Countdown';
 import BiddingSection, { AnimatedPrice } from '../components/bidding/BiddingSection';
 import BidHistory from '../components/bidding/BidHistory';
 import { Avatar, Badge, Button, Card, EmptyState, LiveDot, Page, Skeleton } from '../components/ui';
-import { EASE } from '../lib/motion';
+import { EASE, formatMoney } from '../lib/motion';
+import { applySeo, buildProductJsonLd, setProductJsonLd } from '../lib/seo';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -257,6 +258,32 @@ const ItemDetail = () => {
     }
   };
 
+  // Per-lot head tags + Product JSON-LD, refreshed whenever the lot updates
+  // (initial load, polling, live bids). Cleared again when leaving the page.
+  useEffect(() => {
+    const path = `/items/${id}`;
+    if (!item) {
+      if (error) applySeo({ title: 'Lot not found', path, noindex: true });
+      return;
+    }
+    const price = item.current_highest_bid || item.starting_price;
+    const priceLabel = price != null ? `${item.status === 'sold' ? 'Sold for' : item.current_highest_bid ? 'Current bid' : 'Starting at'} ${formatMoney(price)}. ` : '';
+    const firstImage = Array.isArray(item.image_urls)
+      ? item.image_urls.find((src) => typeof src === 'string' && /^https?:\/\//i.test(src))
+      : undefined;
+    applySeo({
+      title: item.title,
+      description: `${priceLabel}${item.description || `Pre-loved ${item.category ? item.category.toLowerCase() : 'item'} up for live auction.`}`,
+      path,
+      image: firstImage,
+      imageAlt: item.title,
+      type: 'product',
+    });
+    setProductJsonLd(buildProductJsonLd(item, path));
+  }, [item, id, error]);
+
+  useEffect(() => () => setProductJsonLd(null), []);
+
   const isOwner = user && item && user.id === item.seller_id;
 
   // Check if item can be edited (within 30 minutes of creation and no bids)
@@ -330,7 +357,7 @@ const ItemDetail = () => {
               <motion.img
                 key={currentImageIndex}
                 src={images[currentImageIndex] || images[0]}
-                alt={item?.title || 'Item'}
+                alt={item?.title ? `${item.title}${images.length > 1 ? ` — photo ${currentImageIndex + 1} of ${images.length}` : ''}` : 'Auction lot photo'}
                 custom={direction}
                 initial={{ opacity: 0, x: direction * 40, scale: 1.02 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -418,7 +445,7 @@ const ItemDetail = () => {
                 >
                   <img
                     src={img}
-                    alt={`${item?.title} ${index + 1}`}
+                    alt={`${item?.title || 'Auction lot'} — thumbnail ${index + 1}`}
                     className="size-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = FALLBACK;

@@ -1,0 +1,9 @@
+# ThriftBid robots.txt
+# Private routes (login, account, listings management, etc.) are kept out of the
+# index with `noindex` (meta tag + X-Robots-Tag header in vercel.json) rather
+# than Disallow, so crawlers can actually see the noindex directive.
+# `npm run build` regenerates dist/robots.txt using VITE_SITE_URL.
+User-agent: *
+Allow: /
+
+Sitemap: https://thrift-bidding-system-frontend.vercel.app/sitemap.xml
