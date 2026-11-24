@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence, MotionConfig } from 'motion/react';
@@ -8,6 +8,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { Spinner } from './components/ui';
 import useNotificationListener from './hooks/useNotificationListener.jsx';
 import Landing from './pages/Landing';
+import { applySeo, routeSeo, setProductJsonLd } from './lib/seo';
 
 // Portal pages are code-split so the landing page loads lean
 const Login = lazy(() => import('./pages/Login'));
@@ -30,6 +31,16 @@ const CHROMELESS = ['/', '/login', '/register', '/forgot-password', '/reset-pass
 
 const protect = (el) => <ProtectedRoute>{el}</ProtectedRoute>;
 
+// Route-level head tags (title, description, canonical, robots, OG/Twitter).
+// Item pages refine these once the lot has loaded (see ItemDetail).
+function RouteSeo({ pathname, search }) {
+  useEffect(() => {
+    setProductJsonLd(null);
+    applySeo(routeSeo(pathname, search));
+  }, [pathname, search]);
+  return null;
+}
+
 // Layout component that wraps routes and listens for notifications
 function AppLayout() {
   // Listen for real-time notifications (must be inside Router context)
@@ -39,6 +50,7 @@ function AppLayout() {
 
   return (
     <MotionConfig reducedMotion="user">
+      <RouteSeo pathname={location.pathname} search={location.search} />
       <div className="min-h-screen bg-paper">
         {!chromeless && (
           <>
